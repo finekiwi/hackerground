@@ -1,6 +1,9 @@
 import { test, expect } from '@playwright/test';
 
-const ACTIVE_CLASS = 'bg-accent';
+// Active nav links have 'font-medium' class; inactive links do not.
+// Using 'font-medium' avoids false positives from 'hover:bg-accent/50'
+// which is present on all inactive links and would match a naive /bg-accent/ regex.
+const ACTIVE_CLASS = 'font-medium';
 
 test.describe('Navbar', () => {
   test('no nav link is active on home route', async ({ page }) => {
@@ -42,7 +45,8 @@ test.describe('Navbar', () => {
 
   test('logo navigates to home', async ({ page }) => {
     await page.goto('/hackathons');
-    await page.getByRole('navigation').getByRole('link', { name: 'Hackerground' }).click();
+    // Logo is a sibling of <nav> inside <header>, not a child of <nav>
+    await page.locator('header a[href="/"]').click();
     await expect(page).toHaveURL('/');
   });
 });

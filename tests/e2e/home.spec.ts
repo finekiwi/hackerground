@@ -3,6 +3,8 @@ import { test, expect } from '@playwright/test';
 test.describe('Home page (/)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
+    // Wait for StorageInitializer useEffect to seed localStorage before each test
+    await page.waitForFunction(() => localStorage.getItem('hg:hackathons') !== null);
   });
 
   test('renders hero section with title and CTA buttons', async ({ page }) => {
@@ -12,9 +14,10 @@ test.describe('Home page (/)', () => {
   });
 
   test('renders three feature cards', async ({ page }) => {
-    await expect(page.getByRole('link', { name: /해커톤/ }).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /팀 모집/ })).toBeVisible();
-    await expect(page.getByRole('link', { name: /랭킹/ })).toBeVisible();
+    // Scope to card links by href to avoid matching navbar links
+    await expect(page.locator('a[href="/hackathons"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/camp"]').first()).toBeVisible();
+    await expect(page.locator('a[href="/rankings"]').first()).toBeVisible();
   });
 
   test('feature cards navigate to correct routes', async ({ page }) => {
@@ -27,6 +30,7 @@ test.describe('Home page (/)', () => {
   });
 
   test('seeds localStorage with correct keys on first load', async ({ page }) => {
+    // hg:hackathons is already confirmed non-null by beforeEach waitForFunction
     const keys = ['hg:hackathons', 'hg:teams', 'hg:leaderboards', 'hg:hackathon_details', 'hg:submissions'];
     for (const key of keys) {
       const value = await page.evaluate((k) => localStorage.getItem(k), key);
@@ -37,7 +41,7 @@ test.describe('Home page (/)', () => {
   });
 
   test('initStorage does not overwrite existing data on reload', async ({ page }) => {
-    // Tamper with a value
+    // Tamper with a value — hg:seed_version is already set, so reload will not re-seed
     await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem('hg:hackathons')!);
       data[0].title = '__tampered__';
@@ -45,6 +49,7 @@ test.describe('Home page (/)', () => {
     });
 
     await page.reload();
+    await page.waitForFunction(() => localStorage.getItem('hg:hackathons') !== null);
 
     const title = await page.evaluate(() => {
       const data = JSON.parse(localStorage.getItem('hg:hackathons')!);
