@@ -1,10 +1,12 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Trophy, Users, BarChart3, ArrowRight, Terminal, Zap } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { getHackathons, getTeams, getLeaderboards } from "@/lib/storage";
 
 const CARDS = [
   {
@@ -51,6 +53,16 @@ const itemVariants = {
 };
 
 export default function HomePage() {
+  const [stats, setStats] = useState({ hackathons: 0, teams: 0, leaderboardEntries: 0 });
+
+  useEffect(() => {
+    setStats({
+      hackathons: getHackathons().length,
+      teams: getTeams().length,
+      leaderboardEntries: getLeaderboards().reduce((sum, lb) => sum + lb.entries.length, 0),
+    });
+  }, []);
+
   return (
     <div className="flex flex-col items-center">
       {/* Hero */}
@@ -122,14 +134,14 @@ export default function HomePage() {
       >
         <div className="flex flex-wrap justify-center gap-8 text-center">
           {[
-            { value: "3", label: "해커톤", icon: Zap },
-            { value: "4", label: "등록 팀", icon: Users },
-            { value: "4", label: "리더보드 항목", icon: BarChart3 },
+            { value: stats.hackathons, label: "해커톤", icon: Zap },
+            { value: stats.teams, label: "등록 팀", icon: Users },
+            { value: stats.leaderboardEntries, label: "리더보드 항목", icon: BarChart3 },
           ].map(({ value, label, icon: Icon }) => (
             <div key={label} className="flex items-center gap-3">
               <Icon className="h-4 w-4 text-muted-foreground" />
               <div className="text-left">
-                <p className="text-2xl font-bold">{value}</p>
+                <p className="text-2xl font-bold">{value || "—"}</p>
                 <p className="text-xs text-muted-foreground">{label}</p>
               </div>
             </div>

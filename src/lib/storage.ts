@@ -1,10 +1,14 @@
-import type { Hackathon, HackathonDetail, Team, Leaderboard, Submission } from "@/lib/types";
+import type { Hackathon, HackathonDetail, Team, Leaderboard, SubmissionRecord } from "@/lib/types";
 import hackathonsData from "@/lib/data/hackathons.json";
 import hackathonDetailsData from "@/lib/data/hackathon_details.json";
 import teamsData from "@/lib/data/teams.json";
 import leaderboardsData from "@/lib/data/leaderboards.json";
 
+// Bump this when seed data for hackathons / hackathon_details / leaderboards changes.
+// Teams and submissions are user-generated and are NOT reset on version bump.
+const SEED_VERSION = "1";
 const KEYS = {
+  seedVersion: "hg:seed_version",
   hackathons: "hg:hackathons",
   hackathonDetails: "hg:hackathon_details",
   teams: "hg:teams",
@@ -17,17 +21,19 @@ const KEYS = {
 export function initStorage(): void {
   if (typeof window === "undefined") return;
 
-  if (!localStorage.getItem(KEYS.hackathons)) {
+  const storedVersion = localStorage.getItem(KEYS.seedVersion);
+
+  if (storedVersion !== SEED_VERSION) {
+    // Seed data changed — refresh read-only collections only
     localStorage.setItem(KEYS.hackathons, JSON.stringify(hackathonsData));
-  }
-  if (!localStorage.getItem(KEYS.hackathonDetails)) {
     localStorage.setItem(KEYS.hackathonDetails, JSON.stringify(hackathonDetailsData));
+    localStorage.setItem(KEYS.leaderboards, JSON.stringify(leaderboardsData));
+    localStorage.setItem(KEYS.seedVersion, SEED_VERSION);
   }
+
+  // User-generated data: initialize only when absent
   if (!localStorage.getItem(KEYS.teams)) {
     localStorage.setItem(KEYS.teams, JSON.stringify(teamsData));
-  }
-  if (!localStorage.getItem(KEYS.leaderboards)) {
-    localStorage.setItem(KEYS.leaderboards, JSON.stringify(leaderboardsData));
   }
   if (!localStorage.getItem(KEYS.submissions)) {
     localStorage.setItem(KEYS.submissions, JSON.stringify([]));
@@ -118,28 +124,57 @@ export function getLeaderboard(hackathonSlug: string): Leaderboard | undefined {
 
 // ─── Submissions ──────────────────────────────────────────────────────────────
 
-export function getSubmissions(hackathonSlug?: string): Submission[] {
-  const submissions = getItem<Submission[]>(KEYS.submissions);
+export function getSubmissions(hackathonSlug?: string): SubmissionRecord[] {
+  const submissions = getItem<SubmissionRecord[]>(KEYS.submissions);
   if (hackathonSlug) return submissions.filter((s) => s.hackathonSlug === hackathonSlug);
   return submissions;
 }
 
-export function addSubmission(submission: Omit<Submission, "id" | "submittedAt">): Submission {
-  const submissions = getSubmissions();
-  const newSubmission: Submission = {
+export function addSubmission(
+  submission: Omit<SubmissionRecord, "id" | "submittedAt">
+): SubmissionRecord {
+  const now = new Date().toISOString();
+  const newSubmission: SubmissionRecord = {
     ...submission,
     id: `sub-${Date.now()}`,
-    submittedAt: new Date().toISOString(),
+    submittedAt: now,
   };
-  setItem(KEYS.submissions, [...submissions, newSubmission]);
+
+  // Persist submission record
+  setItem(KEYS.submissions, [...getSubmissions(), newSubmission]);
+
+  // Add a pending (unranked) entry to the leaderboard
+  const leaderboards = getLeaderboards();
+  const lbIdx = leaderboards.findIndex((l) => l.hackathonSlug === submission.hackathonSlug);
+  if (lbIdx !== -1) {
+    const alreadyExists = leaderboards[lbIdx].entries.some(
+      (e) => e.teamName === submission.teamName
+    );
+    if (!alreadyExists) {
+      leaderboards[lbIdx].entries.push({
+        rank: null,
+        teamName: submission.teamName,
+        score: null,
+        submittedAt: now,
+      });
+      setItem(KEYS.leaderboards, leaderboards);
+    }
+  }
+
   return newSubmission;
 }
 
-export function getMySubmission(hackathonSlug: string, teamName: string): Submission | undefined {
+export function getMySubmission(
+  hackathonSlug: string,
+  teamName: string
+): SubmissionRecord | undefined {
   return getSubmissions(hackathonSlug).find((s) => s.teamName === teamName);
 }
 
-export function updateSubmission(id: string, updates: Partial<Submission>): Submission | null {
+export function updateSubmission(
+  id: string,
+  updates: Partial<SubmissionRecord>
+): SubmissionRecord | null {
   const submissions = getSubmissions();
   const idx = submissions.findIndex((s) => s.id === id);
   if (idx === -1) return null;

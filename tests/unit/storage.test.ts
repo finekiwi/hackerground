@@ -109,8 +109,9 @@ describe('createTeam', () => {
       hackathonSlug: 'test-hack',
       intro: 'We build.',
       isOpen: true,
-      positions: ['Frontend'],
-      contactLink: 'https://example.com',
+      memberCount: 2,
+      lookingFor: ['Frontend'],
+      contact: { type: 'link', url: 'https://example.com' },
     });
     expect(team.teamCode).toMatch(/^T-/);
     expect(team.createdAt).toBeTruthy();
@@ -124,8 +125,9 @@ describe('createTeam', () => {
       hackathonSlug: 'test-hack',
       intro: 'We ship.',
       isOpen: false,
-      positions: [],
-      contactLink: '',
+      memberCount: 1,
+      lookingFor: [],
+      contact: { type: 'email', email: 'beta@example.com' },
     });
     expect(getTeam(team.teamCode)?.name).toBe('Beta');
   });
@@ -134,7 +136,7 @@ describe('createTeam', () => {
 describe('updateTeam', () => {
   test('updates existing team fields', () => {
     initStorage();
-    const team = createTeam({ name: 'Gamma', hackathonSlug: 'h1', intro: 'Old', isOpen: true, positions: [], contactLink: '' });
+    const team = createTeam({ name: 'Gamma', hackathonSlug: 'h1', intro: 'Old', isOpen: true, memberCount: 1, lookingFor: [], contact: { type: 'link' } });
     const updated = updateTeam(team.teamCode, { intro: 'New intro', isOpen: false });
     expect(updated?.intro).toBe('New intro');
     expect(updated?.isOpen).toBe(false);
@@ -150,7 +152,7 @@ describe('updateTeam', () => {
 describe('deleteTeam', () => {
   test('removes team from storage', () => {
     initStorage();
-    const team = createTeam({ name: 'ToDelete', hackathonSlug: 'h1', intro: '', isOpen: true, positions: [], contactLink: '' });
+    const team = createTeam({ name: 'ToDelete', hackathonSlug: 'h1', intro: '', isOpen: true, memberCount: 1, lookingFor: [], contact: { type: 'link' } });
     expect(deleteTeam(team.teamCode)).toBe(true);
     expect(getTeam(team.teamCode)).toBeUndefined();
   });

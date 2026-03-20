@@ -113,17 +113,19 @@ export interface Team {
 
 // ─── Leaderboard ─────────────────────────────────────────────────────────────
 
+export interface ArtifactLink {
+  webUrl?: string
+  pdfUrl?: string
+  planTitle?: string
+}
+
 export interface LeaderboardEntry {
-  rank: number
+  rank: number | null
   teamName: string
-  score: number
+  score: number | null
   submittedAt: string
   scoreBreakdown?: Record<string, number>
-  artifacts?: {
-    webUrl?: string
-    pdfUrl?: string
-    planTitle?: string
-  }
+  artifacts?: ArtifactLink
 }
 
 export interface Leaderboard {
@@ -134,7 +136,7 @@ export interface Leaderboard {
 
 // ─── Submission ───────────────────────────────────────────────────────────────
 
-export interface Submission {
+export interface SubmissionRecord {
   id: string
   hackathonSlug: string
   teamName: string
