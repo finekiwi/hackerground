@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   ResponsiveContainer,
   LineChart,
@@ -9,7 +9,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from "recharts"
 import { EmptyState } from "@/components/common/empty-state"
 import { getScoreHistory } from "@/lib/storage"
@@ -27,6 +26,9 @@ const TEAM_COLORS = [
   "#e879f9", // fuchsia-400
 ]
 
+// Timestamps are rendered in the user's local timezone (new Date parses +09:00
+// seed values into local time). This is intentional for a demo — organizers and
+// reviewers in different timezones will see locally-adjusted times on the X-axis.
 function formatTime(iso: string): string {
   const d = new Date(iso)
   const mm = String(d.getMonth() + 1).padStart(2, "0")
@@ -39,6 +41,8 @@ function formatTime(iso: string): string {
 function calcDecimals(scores: number[]): number {
   return scores.reduce((max, score) => {
     const s = score.toString()
+    // Guard against scientific notation (e.g. 1e-7) — indexOf(".") would be -1
+    if (s.includes("e") || s.includes("E")) return Math.max(max, 4)
     const dot = s.indexOf(".")
     return dot === -1 ? max : Math.max(max, s.length - dot - 1)
   }, 0)
@@ -60,15 +64,22 @@ export function TrendChart({ hackathonSlug }: TrendChartProps) {
     () => new Set(teamNames)
   )
 
+  // Reset active teams when the hackathon changes (teamNames reference changes)
+  useEffect(() => {
+    setActiveTeams(new Set(teamNames))
+  }, [teamNames])
+
   const decimals = useMemo(
     () => calcDecimals(points.map((p) => p.score)),
     [points]
   )
 
   // flat points → recharts data array
+  // Each row corresponds to a unique timestamp; teams that didn't submit at that
+  // exact time have undefined — connectNulls={true} connects across those gaps,
+  // producing continuous trend lines between each team's actual submissions.
   const chartData = useMemo(() => {
     const allTimes = [...new Set(points.map((p) => p.submittedAt))].sort()
-    // teamName → (submittedAt → score)
     const teamMap = new Map<string, Map<string, number>>()
     for (const name of teamNames) {
       teamMap.set(name, new Map())
@@ -87,13 +98,13 @@ export function TrendChart({ hackathonSlug }: TrendChartProps) {
     })
   }, [points, teamNames])
 
-  function handleLegendClick(teamName: string) {
+  function toggleTeam(name: string) {
     setActiveTeams((prev) => {
       const next = new Set(prev)
-      if (next.has(teamName)) {
-        next.delete(teamName)
+      if (next.has(name)) {
+        next.delete(name)
       } else {
-        next.add(teamName)
+        next.add(name)
       }
       return next
     })
@@ -108,8 +119,10 @@ export function TrendChart({ hackathonSlug }: TrendChartProps) {
     )
   }
 
+  const allDeactivated = activeTeams.size === 0
+
   return (
-    <div className="w-full">
+    <div className="w-full space-y-3">
       <ResponsiveContainer width="100%" height={320}>
         <LineChart data={chartData} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -125,10 +138,10 @@ export function TrendChart({ hackathonSlug }: TrendChartProps) {
             width={decimals > 0 ? 60 : 40}
           />
           <Tooltip
-            formatter={(value: number, name: string) => [
-              value.toFixed(decimals),
-              name,
-            ]}
+            formatter={(value: unknown, name: string) => {
+              const num = typeof value === "number" ? value : Number(value)
+              return [num.toFixed(decimals), name]
+            }}
             contentStyle={{
               backgroundColor: "hsl(var(--popover))",
               border: "1px solid hsl(var(--border))",
@@ -136,10 +149,6 @@ export function TrendChart({ hackathonSlug }: TrendChartProps) {
               color: "hsl(var(--popover-foreground))",
               fontSize: 12,
             }}
-          />
-          <Legend
-            onClick={(e) => handleLegendClick(e.value as string)}
-            wrapperStyle={{ cursor: "pointer", fontSize: 12 }}
           />
           {teamNames.map((name, i) => (
             <Line
@@ -149,12 +158,44 @@ export function TrendChart({ hackathonSlug }: TrendChartProps) {
               stroke={TEAM_COLORS[i % TEAM_COLORS.length]}
               strokeWidth={2}
               dot={{ r: 4 }}
-              connectNulls={false}
+              connectNulls={true}
               strokeOpacity={activeTeams.has(name) ? 1 : 0.15}
             />
           ))}
         </LineChart>
       </ResponsiveContainer>
+
+      {/* Accessible team toggles — replaces recharts SVG legend which has no keyboard role */}
+      <div className="flex flex-wrap gap-2" role="group" aria-label="팀 표시 토글">
+        {teamNames.map((name, i) => {
+          const isActive = activeTeams.has(name)
+          return (
+            <button
+              key={name}
+              type="button"
+              onClick={() => toggleTeam(name)}
+              aria-pressed={isActive}
+              className={[
+                "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-opacity",
+                isActive ? "opacity-100" : "opacity-40",
+              ].join(" ")}
+            >
+              <span
+                className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: TEAM_COLORS[i % TEAM_COLORS.length] }}
+                aria-hidden="true"
+              />
+              {name}
+            </button>
+          )
+        })}
+      </div>
+
+      {allDeactivated && (
+        <p className="text-center text-xs text-muted-foreground">
+          팀을 선택하면 추이를 확인할 수 있습니다.
+        </p>
+      )}
     </div>
   )
 }

@@ -68,6 +68,7 @@ export function TabLeaderboard({ detail }: TabLeaderboardProps) {
           <Button
             variant={view === "table" ? "default" : "outline"}
             size="sm"
+            aria-pressed={view === "table"}
             onClick={() => setView("table")}
           >
             테이블 보기
@@ -75,6 +76,7 @@ export function TabLeaderboard({ detail }: TabLeaderboardProps) {
           <Button
             variant={view === "graph" ? "default" : "outline"}
             size="sm"
+            aria-pressed={view === "graph"}
             onClick={() => setView("graph")}
           >
             그래프 보기
