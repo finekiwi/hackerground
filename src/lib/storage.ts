@@ -1,12 +1,13 @@
-import type { Hackathon, HackathonDetail, Team, Leaderboard, SubmissionRecord } from "@/lib/types";
+import type { Hackathon, HackathonDetail, Team, Leaderboard, SubmissionRecord, ScoreHistoryPoint, ScoreHistory } from "@/lib/types";
 import hackathonsData from "@/lib/data/hackathons.json";
 import hackathonDetailsData from "@/lib/data/hackathon_details.json";
 import teamsData from "@/lib/data/teams.json";
 import leaderboardsData from "@/lib/data/leaderboards.json";
+import scoreHistoryData from "@/lib/data/score_history.json";
 
-// Bump this when seed data for hackathons / hackathon_details / leaderboards changes.
+// Bump this when seed data for hackathons / hackathon_details / leaderboards / score_history changes.
 // Teams and submissions are user-generated and are NOT reset on version bump.
-const SEED_VERSION = "1";
+const SEED_VERSION = "2";
 const KEYS = {
   seedVersion: "hg:seed_version",
   hackathons: "hg:hackathons",
@@ -14,6 +15,7 @@ const KEYS = {
   teams: "hg:teams",
   leaderboards: "hg:leaderboards",
   submissions: "hg:submissions",
+  scoreHistory: "hg:score_history",
 } as const;
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
@@ -28,6 +30,7 @@ export function initStorage(): void {
     localStorage.setItem(KEYS.hackathons, JSON.stringify(hackathonsData));
     localStorage.setItem(KEYS.hackathonDetails, JSON.stringify(hackathonDetailsData));
     localStorage.setItem(KEYS.leaderboards, JSON.stringify(leaderboardsData));
+    localStorage.setItem(KEYS.scoreHistory, JSON.stringify(scoreHistoryData));
     localStorage.setItem(KEYS.seedVersion, SEED_VERSION);
   }
 
@@ -37,6 +40,10 @@ export function initStorage(): void {
   }
   if (!localStorage.getItem(KEYS.submissions)) {
     localStorage.setItem(KEYS.submissions, JSON.stringify([]));
+  }
+  // Backfill: recover if hg:score_history is missing despite seed_version=2
+  if (!localStorage.getItem(KEYS.scoreHistory)) {
+    localStorage.setItem(KEYS.scoreHistory, JSON.stringify(scoreHistoryData));
   }
 }
 
@@ -182,4 +189,28 @@ export function updateSubmission(
   submissions[idx] = updated;
   setItem(KEYS.submissions, submissions);
   return updated;
+}
+
+// ─── Score History ─────────────────────────────────────────────────────────────
+
+export function getScoreHistory(hackathonSlug: string): ScoreHistoryPoint[] {
+  const all = getItem<ScoreHistory[]>(KEYS.scoreHistory);
+  return all.find((h) => h.hackathonSlug === hackathonSlug)?.points ?? [];
+}
+
+// Called when a leaderboard score is confirmed (not at submission time,
+// since addSubmission creates a score=null pending entry).
+// P2 will wire this up when scores are finalized.
+export function addScoreHistoryPoint(
+  hackathonSlug: string,
+  point: ScoreHistoryPoint
+): void {
+  const all = getItem<ScoreHistory[]>(KEYS.scoreHistory);
+  const idx = all.findIndex((h) => h.hackathonSlug === hackathonSlug);
+  if (idx !== -1) {
+    all[idx].points.push(point);
+  } else {
+    all.push({ hackathonSlug, points: [point] });
+  }
+  setItem(KEYS.scoreHistory, all);
 }

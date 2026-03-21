@@ -14,6 +14,8 @@ import {
   getMySubmission,
   updateSubmission,
   getSubmissions,
+  getScoreHistory,
+  addScoreHistoryPoint,
 } from '@/lib/storage';
 
 // ─── initStorage ──────────────────────────────────────────────────────────────
@@ -26,6 +28,23 @@ describe('initStorage', () => {
     expect(localStorage.getItem('hg:teams')).not.toBeNull();
     expect(localStorage.getItem('hg:leaderboards')).not.toBeNull();
     expect(localStorage.getItem('hg:submissions')).not.toBeNull();
+    expect(localStorage.getItem('hg:score_history')).not.toBeNull();
+  });
+
+  test('seeds score_history when version bumps from 1 to 2', () => {
+    localStorage.setItem('hg:seed_version', '1');
+    initStorage();
+    expect(localStorage.getItem('hg:score_history')).not.toBeNull();
+    const history = JSON.parse(localStorage.getItem('hg:score_history')!);
+    expect(history.length).toBeGreaterThan(0);
+  });
+
+  test('backfills score_history if key is missing despite version=2', () => {
+    initStorage();
+    localStorage.removeItem('hg:score_history');
+    expect(localStorage.getItem('hg:score_history')).toBeNull();
+    initStorage();
+    expect(localStorage.getItem('hg:score_history')).not.toBeNull();
   });
 
   test('does not overwrite existing data on subsequent calls', () => {
@@ -211,5 +230,58 @@ describe('updateSubmission', () => {
   test('returns null for unknown id', () => {
     initStorage();
     expect(updateSubmission('nonexistent', {})).toBeNull();
+  });
+});
+
+// ─── Score History ─────────────────────────────────────────────────────────────
+
+describe('getScoreHistory', () => {
+  test('returns seeded points for aimers-8-model-lite', () => {
+    initStorage();
+    const points = getScoreHistory('aimers-8-model-lite');
+    expect(points).toHaveLength(7);
+    expect(points[0]).toHaveProperty('teamName');
+    expect(points[0]).toHaveProperty('score');
+    expect(points[0]).toHaveProperty('submittedAt');
+  });
+
+  test('returns empty array for unknown slug', () => {
+    initStorage();
+    expect(getScoreHistory('nonexistent')).toHaveLength(0);
+  });
+
+  test('does not overwrite existing score_history on subsequent initStorage calls', () => {
+    initStorage();
+    addScoreHistoryPoint('aimers-8-model-lite', {
+      teamName: 'Team Beta',
+      score: 0.9,
+      submittedAt: new Date().toISOString(),
+    });
+    initStorage();
+    const points = getScoreHistory('aimers-8-model-lite');
+    expect(points.length).toBe(8);
+  });
+});
+
+describe('addScoreHistoryPoint', () => {
+  test('appends a point to existing hackathon history', () => {
+    initStorage();
+    const before = getScoreHistory('aimers-8-model-lite').length;
+    addScoreHistoryPoint('aimers-8-model-lite', {
+      teamName: 'Team Delta',
+      score: 0.88,
+      submittedAt: new Date().toISOString(),
+    });
+    expect(getScoreHistory('aimers-8-model-lite')).toHaveLength(before + 1);
+  });
+
+  test('creates new entry for unknown hackathon slug', () => {
+    initStorage();
+    addScoreHistoryPoint('new-hackathon', {
+      teamName: 'Solo',
+      score: 50,
+      submittedAt: new Date().toISOString(),
+    });
+    expect(getScoreHistory('new-hackathon')).toHaveLength(1);
   });
 });
