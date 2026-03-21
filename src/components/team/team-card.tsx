@@ -19,7 +19,7 @@ export function TeamCard({ team, hackathonTitle, index }: TeamCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: index * 0.06 }}
     >
-      <Card className="h-full border-border/60">
+      <Card className="h-full border-border/60" data-testid="team-card">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-semibold text-sm leading-snug">{team.name}</h3>

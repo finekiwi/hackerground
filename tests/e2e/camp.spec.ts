@@ -18,7 +18,7 @@ test.describe('Camp page (/camp)', () => {
   test('hackathon filter changes displayed cards', async ({ page }) => {
     // Wait for cards to render
     await expect(page.getByText('Team Alpha')).toBeVisible();
-    const initialCount = await page.locator('.rounded-xl.border.bg-card').count();
+    const initialCount = await page.locator('[data-testid="team-card"]').count();
     expect(initialCount).toBeGreaterThanOrEqual(2);
 
     // Filter to a specific hackathon
@@ -27,7 +27,7 @@ test.describe('Camp page (/camp)', () => {
 
     // Wait for filter to take effect
     await expect(page.getByText('1개 팀')).toBeVisible();
-    const filteredCount = await page.locator('.rounded-xl.border.bg-card').count();
+    const filteredCount = await page.locator('[data-testid="team-card"]').count();
     expect(filteredCount).toBeLessThan(initialCount);
   });
 

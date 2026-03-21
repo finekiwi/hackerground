@@ -126,6 +126,7 @@ export function GlobalLeaderboardClient() {
             <button
               key={p.value}
               onClick={() => setPeriod(p.value)}
+              aria-pressed={period === p.value}
               className={[
                 "px-3 py-1 rounded-full text-xs font-medium border transition-colors",
                 period === p.value

@@ -23,20 +23,18 @@ export function TeamListClient() {
   const [selectedSlug, setSelectedSlug] = useState<string>("all")
 
   useEffect(() => {
-    setTeams(getTeams())
     const hs = getHackathons()
+    setTeams(getTeams())
     setHackathons(hs)
-    const map = new Map<string, string>()
-    for (const h of hs) {
-      map.set(h.slug, h.title)
-    }
-    setHackathonTitleMap(map)
+    setHackathonTitleMap(new Map(hs.map((h) => [h.slug, h.title])))
+  }, [])
 
+  useEffect(() => {
     const slugParam = searchParams.get("hackathon")
-    if (slugParam && hs.some((h) => h.slug === slugParam)) {
+    if (slugParam && hackathons.some((h) => h.slug === slugParam)) {
       setSelectedSlug(slugParam)
     }
-  }, [searchParams])
+  }, [searchParams, hackathons])
 
   const filtered = selectedSlug === "all" ? teams : teams.filter((t) => t.hackathonSlug === selectedSlug)
 

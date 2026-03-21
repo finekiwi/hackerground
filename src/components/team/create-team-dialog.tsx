@@ -83,7 +83,6 @@ export function CreateTeamDialog({ hackathons, defaultSlug, onCreated }: CreateT
     })
 
     onCreated(team)
-    resetForm()
     setOpen(false)
   }
 
