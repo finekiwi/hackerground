@@ -134,6 +134,19 @@ export interface Leaderboard {
   entries: LeaderboardEntry[]
 }
 
+// ─── Score History ────────────────────────────────────────────────────────────
+
+export interface ScoreHistoryPoint {
+  teamName: string
+  score: number
+  submittedAt: string
+}
+
+export interface ScoreHistory {
+  hackathonSlug: string
+  points: ScoreHistoryPoint[]
+}
+
 // ─── Submission ───────────────────────────────────────────────────────────────
 
 export interface SubmissionRecord {

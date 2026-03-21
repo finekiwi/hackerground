@@ -9,7 +9,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/common/empty-state"
+import { TrendChart } from "@/components/leaderboard/trend-chart"
 import { getLeaderboard } from "@/lib/storage"
 import { formatDate } from "@/lib/format"
 import type { HackathonDetail, LeaderboardEntry } from "@/lib/types"
@@ -32,6 +34,7 @@ function sortEntries(entries: LeaderboardEntry[]): LeaderboardEntry[] {
 export function TabLeaderboard({ detail }: TabLeaderboardProps) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
+  const [view, setView] = useState<"table" | "graph">("table")
   const hasBreakdown = detail.sections.eval.scoreSource === "vote"
 
   useEffect(() => {
@@ -55,11 +58,35 @@ export function TabLeaderboard({ detail }: TabLeaderboardProps) {
 
   return (
     <div className="space-y-4">
-      {updatedAt && (
-        <p className="text-xs text-muted-foreground">
-          최종 업데이트: {formatDate(updatedAt)}
-        </p>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {updatedAt && (
+          <p className="text-xs text-muted-foreground">
+            최종 업데이트: {formatDate(updatedAt)}
+          </p>
+        )}
+        <div className="flex flex-nowrap shrink-0 gap-2">
+          <Button
+            variant={view === "table" ? "default" : "outline"}
+            size="sm"
+            aria-pressed={view === "table"}
+            onClick={() => setView("table")}
+          >
+            테이블 보기
+          </Button>
+          <Button
+            variant={view === "graph" ? "default" : "outline"}
+            size="sm"
+            aria-pressed={view === "graph"}
+            onClick={() => setView("graph")}
+          >
+            그래프 보기
+          </Button>
+        </div>
+      </div>
+
+      {view === "graph" ? (
+        <TrendChart hackathonSlug={detail.slug} />
+      ) : (
       <div className="rounded-lg border overflow-hidden">
         <Table>
           <TableHeader>
@@ -138,7 +165,8 @@ export function TabLeaderboard({ detail }: TabLeaderboardProps) {
           </TableBody>
         </Table>
       </div>
-      {detail.sections.leaderboard.note && (
+      )}
+      {view === "table" && detail.sections.leaderboard.note && (
         <p className="text-xs text-muted-foreground">{detail.sections.leaderboard.note}</p>
       )}
     </div>
